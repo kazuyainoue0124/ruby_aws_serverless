@@ -1,5 +1,10 @@
 # require 'httparty'
 require 'json'
+require 'logger'
+
+def logger
+  @logger ||= Logger.new($stdout, level: Logger::Severity::DEBUG)
+end
 
 def lambda_handler(event:, context:)
   # Sample pure Lambda function
@@ -27,6 +32,8 @@ def lambda_handler(event:, context:)
   #   puts error.inspect
   #   raise error
   # end
+
+  logger.debug('これはログです')
 
   {
     statusCode: 200,
