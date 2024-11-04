@@ -15,7 +15,12 @@ Parameters:
   SlackSigningSecret:
     Type: String
     Description: Slack Signing Secret
-
+  SlackApiToken:
+    Type: String
+    Description: Slack API Token
+  SlackChannel:
+    Type: String
+    Description: Slack Channel
 Resources:
   RecordWorkingFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
@@ -38,6 +43,7 @@ Resources:
           Properties:
             Path: /record-working
             Method: post
+
   WorkingStatuses:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -48,6 +54,32 @@ Resources:
         - AttributeName: slack_id
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
+
+  NotifyWorkingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: notify_working/
+      Handler: app.lambda_handler
+      Runtime: ruby3.3
+      Policies:
+        - DynamoDBStreamReadPolicy:
+            TableName: !Ref WorkingStatuses
+            StreamName: !GetAtt WorkingStatuses.StreamArn
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          SLACK_API_TOKEN: !Ref SlackApiToken
+          SLACK_CHANNEL: !Ref SlackChannel
+      Events:
+        NotifyWorking:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt WorkingStatuses.StreamArn
+            BatchSize: 100
+            StartingPosition: TRIM_HORIZON
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
