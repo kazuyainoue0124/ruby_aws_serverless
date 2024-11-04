@@ -2,6 +2,20 @@ require 'json'
 require 'tzinfo'
 require 'logger'
 require 'uri'
+require 'slack-ruby-client'
+require 'rack'
+
+def verify_request(event)
+  env = {
+    'rack.input' => StringIO.new(event['body']),
+    'HTTP_X_SLACK_REQUEST_TIMESTAMP' => event.dig('headers', 'X-Slack-Request-Timestamp'),
+    'HTTP_X_SLACK_SIGNATURE' => event.dig('headers', 'X-Slack-Signature')
+  }
+
+  req = Rack::Request.new(env)
+  slack_request = Slack::Events::Request.new(req)
+  slack_request.verify!
+end
 
 def logger
   @logger ||= Logger.new($stdout, level: Logger::Severity::INFO)
@@ -21,6 +35,8 @@ end
 def lambda_handler(event:, context:)
   logger.debug(event)
   logger.debug(context)
+
+  verify_request(event)
 
   params = URI.decode_www_form(event['body']).to_h
   body = create_local_time(*params['text'].split(',').map(&:strip))
